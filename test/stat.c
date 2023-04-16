@@ -1,4 +1,6 @@
 /*
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Copyright (c) 2016, 2018 Jonathan Anderson
  * Copyright (c) 2016 Stanley Uche Godfrey
  * All rights reserved.

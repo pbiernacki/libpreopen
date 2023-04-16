@@ -1,4 +1,6 @@
 /**
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * @file   libpreopen.h
  * @brief  Public header for libpreopen
  *

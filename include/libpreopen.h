@@ -56,8 +56,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef LIBPO_H
-#define LIBPO_H
+#ifndef LIBPREOPEN_H
+#define LIBPREOPEN_H
 
 #include <sys/cdefs.h>
 
@@ -203,4 +203,4 @@ struct po_map *po_unpack(int fd);
 
 __END_DECLS
 
-#endif /* !LIBPO_H */
+#endif /* !LIBPREOPEN_H */

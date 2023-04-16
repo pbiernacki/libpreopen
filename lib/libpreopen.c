@@ -66,6 +66,7 @@
 #include <sys/cdefs.h>
 
 #include <sys/param.h>
+#include <sys/capsicum.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -86,9 +87,6 @@
 
 #include "libpreopen.h"
 
-#ifdef WITH_CAPSICUM
-#include <sys/capsicum.h>
-#endif
 
 /**
  * An entry in a po_map.
@@ -107,10 +105,8 @@ struct po_map_entry {
     /** File descriptor (which may be a directory) */
     int fd;
 
-#ifdef WITH_CAPSICUM
     /** Capability rights associated with the file descriptor */
     cap_rights_t rights;
-#endif
 };
 
 // Documented in external header file
@@ -195,11 +191,9 @@ po_add(struct po_map *map, const char *path, int fd)
     entry->name = strdup(path);
     entry->fd = fd;
 
-#ifdef WITH_CAPSICUM
     if (cap_rights_get(fd, &entry->rights) != 0) {
         return (NULL);
     }
-#endif
 
     po_map_assertvalid(map);
 
@@ -229,11 +223,9 @@ po_find(struct po_map *map, const char *path, cap_rights_t *rights)
             continue;
         }
 
-#ifdef WITH_CAPSICUM
         if (rights && !cap_rights_contains(&entry->rights, rights)) {
             continue;
         }
-#endif
 
         best = entry->fd;
         bestlen = len;

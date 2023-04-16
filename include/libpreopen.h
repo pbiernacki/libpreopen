@@ -203,4 +203,4 @@ struct po_map *po_unpack(int fd);
 
 __END_DECLS
 
-#endif /* !LIBPREOPEN_H */
+#endif // LIBPREOPEN_H

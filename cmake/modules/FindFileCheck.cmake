@@ -1,4 +1,6 @@
 #
+# SPDX-License-Identifier: BSD-2-Clause
+#
 # Copyright (c) 2018 Jonathan Anderson
 #
 # Permission to use, copy, modify, and/or distribute this software for any
@@ -31,7 +33,6 @@ find_program(FILECHECK_EXECUTABLE FileCheck
 		$ENV{PATH}
 		DOC "Path to LLVM 'FileCheck' (test output checker) executable"
 )
-
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(FileCheck DEFAULT_MSG FILECHECK_EXECUTABLE)

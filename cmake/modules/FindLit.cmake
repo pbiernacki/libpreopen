@@ -1,4 +1,7 @@
 #
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# Copyright (c) 2023 Mysterious Code Ltd.
 # Copyright (c) 2018 Jonathan Anderson
 #
 # Permission to use, copy, modify, and/or distribute this software for any
@@ -31,7 +34,6 @@ else()
 	set(LIT_OPTIONS "-s")
 endif ()
 
-
 find_program(LIT_EXECUTABLE lit
 	# Look in user's Pip installation as well as system PATHs:
 	PATHS
@@ -48,5 +50,5 @@ find_program(LIT_EXECUTABLE lit
 set(LIT_COMMAND "${LIT_EXECUTABLE};${LIT_OPTIONS}")
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(lit DEFAULT_MSG LIT_EXECUTABLE LIT_COMMAND)
+find_package_handle_standard_args(Lit DEFAULT_MSG LIT_EXECUTABLE LIT_COMMAND)
 mark_as_advanced(LIT_EXECUTABLE)

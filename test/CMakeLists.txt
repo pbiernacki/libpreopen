@@ -1,12 +1,11 @@
 find_package(Lit)
 find_package(FileCheck)
 
-set(TEST_CFLAGS "-Wall -g -I ${CMAKE_SOURCE_DIR}/include")
-set(TEST_LDFLAGS "-L ${LIBRARY_BUILD_DIR} -l preopen")
+set(TEST_CFLAGS "-Wall -g -I${CMAKE_SOURCE_DIR}/include")
+set(TEST_LDFLAGS "-L${LIBRARY_BUILD_DIR} -lpreopen")
 set(TEST_LIBRARY_NAME
 	"${CMAKE_SHARED_LIBRARY_PREFIX}preopen${CMAKE_SHARED_LIBRARY_SUFFIX}")
 set(TEST_LIBRARY_PATH "${LIBRARY_BUILD_DIR}/${TEST_LIBRARY_NAME}")
-
 
 if (NOT LIT_EXECUTABLE)
 	message(WARNING "Unable to find lit in PATH! Cannot run tests.")
@@ -28,6 +27,5 @@ else() # All's well: we have both lit and FileCheck
 		BYPRODUCTS test-results.xml
 		COMMENT "Running unit tests"
 	)
-
-	add_dependencies(check preopen)
+	add_dependencies(check libpreopen)
 endif()

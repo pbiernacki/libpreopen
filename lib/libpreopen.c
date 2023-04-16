@@ -72,32 +72,31 @@
  * @internal
  */
 struct po_map_entry {
-	/**
-	 * The name this file or directory is mapped to.
-	 *
-	 * This name should look like a path, but it does not necessarily need
-	 * match to match the path it was originally obtained from.
-	 */
-	const char *name;
+    /**
+     * The name this file or directory is mapped to.
+     *
+     * This name should look like a path, but it does not necessarily need
+     * match to match the path it was originally obtained from.
+     */
+    const char *name;
 
-	/** File descriptor (which may be a directory) */
-	int fd;
+    /** File descriptor (which may be a directory) */
+    int fd;
 
 #ifdef WITH_CAPSICUM
-	/** Capability rights associated with the file descriptor */
-	cap_rights_t rights;
+    /** Capability rights associated with the file descriptor */
+    cap_rights_t rights;
 #endif
 };
 
 // Documented in external header file
 struct po_map {
-	//! @internal
-	int refcount;
-	struct po_map_entry *entries;
-	size_t capacity;
-	size_t length;
+    //! @internal
+    int                  refcount;
+    struct po_map_entry *entries;
+    size_t               capacity;
+    size_t               length;
 };
-
 
 /**
  * Is a directory a prefix of a given path?
@@ -109,8 +108,7 @@ struct po_map {
  *
  * @internal
  */
-bool	po_isprefix(const char *dir, size_t dirlen, const char *path);
-
+bool po_isprefix(const char *dir, size_t dirlen, const char *path);
 
 /**
  * Check that a @ref po_map is valid (assert out if it's not).
@@ -120,7 +118,7 @@ bool	po_isprefix(const char *dir, size_t dirlen, const char *path);
 #ifdef NDEBUG
 #define po_map_assertvalid(...)
 #else
-void	po_map_assertvalid(const struct po_map *);
+void po_map_assertvalid(const struct po_map *);
 #endif
 
 /**
@@ -132,7 +130,7 @@ void	po_map_assertvalid(const struct po_map *);
  *
  * @internal
  */
-struct po_map* po_map_enlarge(struct po_map *map);
+struct po_map *po_map_enlarge(struct po_map *map);
 
 /**
  * Store an error message in the global "last error message" buffer.
@@ -149,139 +147,137 @@ void po_errormessage(const char *msg);
  */
 void po_set_libc_map(struct po_map *);
 
-struct po_map*
+struct po_map *
 po_add(struct po_map *map, const char *path, int fd)
 {
-	struct po_map_entry *entry;
+    struct po_map_entry *entry;
 
-	po_map_assertvalid(map);
+    po_map_assertvalid(map);
 
-	if (path == NULL || fd < 0) {
-		return (NULL);
-	}
+    if (path == NULL || fd < 0) {
+        return (NULL);
+    }
 
-	if (map->length == map->capacity) {
-		map = po_map_enlarge(map);
-		if (map == NULL) {
-			return (NULL);
-		}
-	}
+    if (map->length == map->capacity) {
+        map = po_map_enlarge(map);
+        if (map == NULL) {
+            return (NULL);
+        }
+    }
 
-	entry = map->entries + map->length;
-	map->length++;
+    entry = map->entries + map->length;
+    map->length++;
 
-	entry->name = strdup(path);
-	entry->fd = fd;
+    entry->name = strdup(path);
+    entry->fd = fd;
 
 #ifdef WITH_CAPSICUM
-	if (cap_rights_get(fd, &entry->rights) != 0) {
-		return (NULL);
-	}
+    if (cap_rights_get(fd, &entry->rights) != 0) {
+        return (NULL);
+    }
 #endif
 
-	po_map_assertvalid(map);
+    po_map_assertvalid(map);
 
-	return (map);
+    return (map);
 }
 
 struct po_relpath
-po_find(struct po_map* map, const char *path, cap_rights_t *rights)
+po_find(struct po_map *map, const char *path, cap_rights_t *rights)
 {
-	const char *relpath ;
-	struct po_relpath match = { .relative_path = NULL, .dirfd = -1 };
-	size_t bestlen = 0;
-	int best = -1;
+    const char       *relpath;
+    struct po_relpath match = {.relative_path = NULL, .dirfd = -1};
+    size_t            bestlen = 0;
+    int               best = -1;
 
-	po_map_assertvalid(map);
+    po_map_assertvalid(map);
 
-	if (path == NULL) {
-		return (match);
-	}
+    if (path == NULL) {
+        return (match);
+    }
 
-	for(size_t i = 0; i < map->length; i++) {
-		const struct po_map_entry *entry = map->entries + i;
-		const char *name = entry->name;
-		size_t len = strnlen(name, MAXPATHLEN);
+    for (size_t i = 0; i < map->length; i++) {
+        const struct po_map_entry *entry = map->entries + i;
+        const char                *name = entry->name;
+        size_t                     len = strnlen(name, MAXPATHLEN);
 
-		if ((len <= bestlen) || !po_isprefix(name, len, path)) {
-			continue;
-		}
+        if ((len <= bestlen) || !po_isprefix(name, len, path)) {
+            continue;
+        }
 
 #ifdef WITH_CAPSICUM
-		if (rights && !cap_rights_contains(&entry->rights, rights)) {
-			continue;
-		}
+        if (rights && !cap_rights_contains(&entry->rights, rights)) {
+            continue;
+        }
 #endif
 
-		best = entry->fd;
-		bestlen = len;
-	}
+        best = entry->fd;
+        bestlen = len;
+    }
 
-	relpath = path + bestlen;
+    relpath = path + bestlen;
 
-	while (*relpath == '/') {
-		relpath++;
-	}
+    while (*relpath == '/') {
+        relpath++;
+    }
 
-	if (*relpath == '\0') {
-		relpath = ".";
-	}
+    if (*relpath == '\0') {
+        relpath = ".";
+    }
 
-	match.relative_path = relpath;
-	match.dirfd = best;
+    match.relative_path = relpath;
+    match.dirfd = best;
 
-	return match;
+    return match;
 }
 
 bool
 po_isprefix(const char *dir, size_t dirlen, const char *path)
 {
-	size_t i;
-	assert(dir != NULL);
-	assert(path != NULL);
-	for (i = 0; i < dirlen; i++)
-	{
-		if (path[i] != dir[i])
-			return false;
-	}
-	return path[i] == '/' || path[i] == '\0';
+    size_t i;
+    assert(dir != NULL);
+    assert(path != NULL);
+    for (i = 0; i < dirlen; i++) {
+        if (path[i] != dir[i])
+            return false;
+    }
+    return path[i] == '/' || path[i] == '\0';
 }
 
 int
 po_preopen(struct po_map *map, const char *path, int flags, ...)
 {
-	va_list args;
-	int fd, mode;
+    va_list args;
+    int     fd, mode;
 
-	va_start(args, flags);
-	mode = va_arg(args, int);
+    va_start(args, flags);
+    mode = va_arg(args, int);
 
-	po_map_assertvalid(map);
+    po_map_assertvalid(map);
 
-	if (path == NULL) {
-		return (-1);
-	}
+    if (path == NULL) {
+        return (-1);
+    }
 
-	fd = openat(AT_FDCWD, path, flags, mode);
-	if (fd == -1) {
-		return (-1);
-	}
+    fd = openat(AT_FDCWD, path, flags, mode);
+    if (fd == -1) {
+        return (-1);
+    }
 
-	if (po_add(map, path, fd) == NULL) {
-		return (-1);
-	}
+    if (po_add(map, path, fd) == NULL) {
+        return (-1);
+    }
 
-	po_map_assertvalid(map);
+    po_map_assertvalid(map);
 
-	return (fd);
+    return (fd);
 }
 
 bool
 po_print_entry(const char *name, int fd, cap_rights_t rights)
 {
-	printf(" - name: '%s', fd: %d, rights: <rights>\n",
-	       name, fd);
-	return (true);
+    printf(" - name: '%s', fd: %d, rights: <rights>\n", name, fd);
+    return (true);
 }
 
 static char error_buffer[1024];
@@ -290,35 +286,32 @@ static char error_buffer[1024];
 void
 po_map_assertvalid(const struct po_map *map)
 {
-	const struct po_map_entry *entry;
-	size_t i;
+    const struct po_map_entry *entry;
+    size_t                     i;
 
-	assert(map->refcount > 0);
-	assert(map->length <= map->capacity);
-	assert(map->entries != NULL || map->capacity == 0);
+    assert(map->refcount > 0);
+    assert(map->length <= map->capacity);
+    assert(map->entries != NULL || map->capacity == 0);
 
-	for (i = 0; i < map->length; i++) {
-		entry = map->entries + i;
+    for (i = 0; i < map->length; i++) {
+        entry = map->entries + i;
 
-		assert(entry->name != NULL);
-		assert(entry->fd >= 0);
-	}
+        assert(entry->name != NULL);
+        assert(entry->fd >= 0);
+    }
 }
 #endif /* !defined(NDEBUG) */
 
 void
 po_errormessage(const char *msg)
 {
-
-	snprintf(error_buffer, sizeof(error_buffer), "%s: error %d",
-		msg, errno);
+    snprintf(error_buffer, sizeof(error_buffer), "%s: error %d", msg, errno);
 }
 
-const char*
+const char *
 po_last_error()
 {
-
-	return (error_buffer);
+    return (error_buffer);
 }
 
 /**
@@ -341,8 +334,7 @@ static struct po_relpath find_relative(const char *path, cap_rights_t *);
  * Get the map that was handed into the process via `SHARED_MEMORYFD`
  * (if it exists).
  */
-static struct po_map*	get_shared_map(void);
-
+static struct po_map *get_shared_map(void);
 
 /*
  * Wrappers around system calls:
@@ -362,19 +354,19 @@ static struct po_map*	get_shared_map(void);
 int
 _open(const char *path, int flags, ...)
 {
-	struct po_relpath rel;
-	va_list args;
-	int mode;
+    struct po_relpath rel;
+    va_list           args;
+    int               mode;
 
-	va_start(args, flags);
-	mode = va_arg(args, int);
-	rel = find_relative(path, NULL);
+    va_start(args, flags);
+    mode = va_arg(args, int);
+    rel = find_relative(path, NULL);
 
-	// If the file is already opened, no need of relative opening!
-	if( strcmp(rel.relative_path,".") == 0 )
-		return dup(rel.dirfd);
-	else
-		return openat(rel.dirfd, rel.relative_path, flags, mode);
+    // If the file is already opened, no need of relative opening!
+    if (strcmp(rel.relative_path, ".") == 0)
+        return dup(rel.dirfd);
+    else
+        return openat(rel.dirfd, rel.relative_path, flags, mode);
 }
 
 /**
@@ -391,9 +383,9 @@ _open(const char *path, int flags, ...)
 int
 access(const char *path, int mode)
 {
-	struct po_relpath rel = find_relative(path, NULL);
+    struct po_relpath rel = find_relative(path, NULL);
 
-	return faccessat(rel.dirfd, rel.relative_path, mode,0);
+    return faccessat(rel.dirfd, rel.relative_path, mode, 0);
 }
 
 /**
@@ -410,16 +402,16 @@ access(const char *path, int mode)
 int
 connect(int s, const struct sockaddr *name, socklen_t namelen)
 {
-	struct po_relpath rel;
+    struct po_relpath rel;
 
-	if (name->sa_family == AF_UNIX) {
-	    struct sockaddr_un *usock = (struct sockaddr_un *)name;
-	    rel = find_relative(usock->sun_path, NULL);
-	    strlcpy(usock->sun_path, rel.relative_path, sizeof(usock->sun_path));
-	    return connectat(rel.dirfd, s, name, namelen);
-	}
+    if (name->sa_family == AF_UNIX) {
+        struct sockaddr_un *usock = (struct sockaddr_un *)name;
+        rel = find_relative(usock->sun_path, NULL);
+        strlcpy(usock->sun_path, rel.relative_path, sizeof(usock->sun_path));
+        return connectat(rel.dirfd, s, name, namelen);
+    }
 
-	return connectat(AT_FDCWD, s, name, namelen);
+    return connectat(AT_FDCWD, s, name, namelen);
 }
 
 /**
@@ -436,9 +428,9 @@ connect(int s, const struct sockaddr *name, socklen_t namelen)
 int
 eaccess(const char *path, int mode)
 {
-	struct po_relpath rel = find_relative(path, NULL);
+    struct po_relpath rel = find_relative(path, NULL);
 
-	return faccessat(rel.dirfd, rel.relative_path, mode, 0);
+    return faccessat(rel.dirfd, rel.relative_path, mode, 0);
 }
 
 /**
@@ -455,9 +447,9 @@ eaccess(const char *path, int mode)
 int
 lstat(const char *path, struct stat *st)
 {
-	struct po_relpath rel = find_relative(path, NULL);
+    struct po_relpath rel = find_relative(path, NULL);
 
-	return fstatat(rel.dirfd, rel.relative_path,st,AT_SYMLINK_NOFOLLOW);
+    return fstatat(rel.dirfd, rel.relative_path, st, AT_SYMLINK_NOFOLLOW);
 }
 
 /**
@@ -469,12 +461,12 @@ lstat(const char *path, struct stat *st)
 int
 open(const char *path, int flags, ...)
 {
-	va_list args;
-	int mode;
+    va_list args;
+    int     mode;
 
-	va_start(args, flags);
-	mode = va_arg(args, int);
-	return _open(path, flags, mode);
+    va_start(args, flags);
+    mode = va_arg(args, int);
+    return _open(path, flags, mode);
 }
 
 /**
@@ -491,11 +483,11 @@ open(const char *path, int flags, ...)
 int
 rename(const char *from, const char *to)
 {
-	struct po_relpath rel_from = find_relative(from, NULL);
-	struct po_relpath rel_to = find_relative(to, NULL);
+    struct po_relpath rel_from = find_relative(from, NULL);
+    struct po_relpath rel_to = find_relative(to, NULL);
 
-	return renameat(rel_from.dirfd, rel_from.relative_path, rel_to.dirfd,
-		rel_to.relative_path);
+    return renameat(rel_from.dirfd, rel_from.relative_path, rel_to.dirfd,
+            rel_to.relative_path);
 }
 
 /**
@@ -512,9 +504,9 @@ rename(const char *from, const char *to)
 int
 stat(const char *path, struct stat *st)
 {
-	struct po_relpath rel = find_relative(path, NULL);
+    struct po_relpath rel = find_relative(path, NULL);
 
-	return fstatat(rel.dirfd, rel.relative_path,st, AT_SYMLINK_NOFOLLOW);
+    return fstatat(rel.dirfd, rel.relative_path, st, AT_SYMLINK_NOFOLLOW);
 }
 
 /**
@@ -531,9 +523,9 @@ stat(const char *path, struct stat *st)
 int
 unlink(const char *path)
 {
-	struct po_relpath rel = find_relative(path, NULL);
+    struct po_relpath rel = find_relative(path, NULL);
 
-	return unlinkat(rel.dirfd, rel.relative_path, 0);
+    return unlinkat(rel.dirfd, rel.relative_path, 0);
 }
 
 /*
@@ -554,154 +546,154 @@ unlink(const char *path)
 void *
 dlopen(const char *path, int mode)
 {
-	struct po_relpath rel = find_relative(path, NULL);
+    struct po_relpath rel = find_relative(path, NULL);
 
-	return fdlopen(openat(rel.dirfd, rel.relative_path, 0, mode), mode);
+    return fdlopen(openat(rel.dirfd, rel.relative_path, 0, mode), mode);
 }
 
 /* Provide tests with mechanism to set our static po_map */
 void
 po_set_libc_map(struct po_map *map)
 {
-	po_map_assertvalid(map);
+    po_map_assertvalid(map);
 
-	map->refcount += 1;
+    map->refcount += 1;
 
-	if (global_map != NULL) {
-		po_map_release(global_map);
-	}
+    if (global_map != NULL) {
+        po_map_release(global_map);
+    }
 
-	global_map = map;
+    global_map = map;
 }
 
 static struct po_relpath
 find_relative(const char *path, cap_rights_t *rights)
 {
-	struct po_relpath rel;
-	struct po_map *map;
+    struct po_relpath rel;
+    struct po_map    *map;
 
-	map = get_shared_map();
-	if (map == NULL) {
-		rel.dirfd = AT_FDCWD;
-		rel.relative_path = path;
-	} else {
-		rel = po_find(map, path, NULL);
-	}
+    map = get_shared_map();
+    if (map == NULL) {
+        rel.dirfd = AT_FDCWD;
+        rel.relative_path = path;
+    } else {
+        rel = po_find(map, path, NULL);
+    }
 
-	return (rel);
+    return (rel);
 }
 
-static struct po_map*
+static struct po_map *
 get_shared_map()
 {
-	struct po_map *map;
-	char *end, *env;
-	long fd;
+    struct po_map *map;
+    char          *end, *env;
+    long           fd;
 
-	// Do we already have a default map?
-	if (global_map) {
-		po_map_assertvalid(global_map);
-		return (global_map);
-	}
+    // Do we already have a default map?
+    if (global_map) {
+        po_map_assertvalid(global_map);
+        return (global_map);
+    }
 
-	// Attempt to unwrap po_map from a shared memory segment specified by
-	// SHARED_MEMORYFD
-	env = getenv("SHARED_MEMORYFD");
-	if (env == NULL || *env == '\0') {
-		return (NULL);
-	}
+    // Attempt to unwrap po_map from a shared memory segment specified by
+    // SHARED_MEMORYFD
+    env = getenv("SHARED_MEMORYFD");
+    if (env == NULL || *env == '\0') {
+        return (NULL);
+    }
 
-	// We expect this environment variable to be an integer and nothing but
-	// an integer.
-	fd = strtol(env, &end, 10);
-	if (*end != '\0') {
-		return (NULL);
-	}
+    // We expect this environment variable to be an integer and nothing but
+    // an integer.
+    fd = strtol(env, &end, 10);
+    if (*end != '\0') {
+        return (NULL);
+    }
 
-	map = po_unpack(fd);
-	if (map == NULL) {
-		return (NULL);
-	}
+    map = po_unpack(fd);
+    if (map == NULL) {
+        return (NULL);
+    }
 
-	global_map = map;
+    global_map = map;
 
-	return (map);
+    return (map);
 }
 
-struct po_map*
+struct po_map *
 po_map_create(int capacity)
 {
-	struct po_map *map;
+    struct po_map *map;
 
-	map = malloc(sizeof(struct po_map));
-	if (map == NULL) {
-		return (NULL);
-	}
+    map = malloc(sizeof(struct po_map));
+    if (map == NULL) {
+        return (NULL);
+    }
 
-	map->entries = calloc(sizeof(struct po_map_entry), capacity);
-	if (map->entries == NULL) {
-		free(map);
-		return (NULL);
-	}
+    map->entries = calloc(sizeof(struct po_map_entry), capacity);
+    if (map->entries == NULL) {
+        free(map);
+        return (NULL);
+    }
 
-	map->refcount = 1;
-	map->capacity = capacity;
-	map->length = 0;
+    map->refcount = 1;
+    map->capacity = capacity;
+    map->length = 0;
 
-	po_map_assertvalid(map);
+    po_map_assertvalid(map);
 
-	return (map);
+    return (map);
 }
 
-struct po_map*
+struct po_map *
 po_map_enlarge(struct po_map *map)
 {
-	struct po_map_entry *enlarged;
-	enlarged = calloc(sizeof(struct po_map_entry), 2 * map->capacity);
-	if (enlarged == NULL) {
-		return (NULL);
-	}
-	memcpy(enlarged, map->entries, map->length * sizeof(*enlarged));
-	free(map->entries);
-	map->entries = enlarged;
-	map->capacity = 2 * map->capacity;
-	return map;
+    struct po_map_entry *enlarged;
+    enlarged = calloc(sizeof(struct po_map_entry), 2 * map->capacity);
+    if (enlarged == NULL) {
+        return (NULL);
+    }
+    memcpy(enlarged, map->entries, map->length * sizeof(*enlarged));
+    free(map->entries);
+    map->entries = enlarged;
+    map->capacity = 2 * map->capacity;
+    return map;
 }
 
 size_t
 po_map_foreach(const struct po_map *map, po_map_iter_cb cb)
 {
-	struct po_map_entry *entry;
-	size_t n;
+    struct po_map_entry *entry;
+    size_t               n;
 
-	po_map_assertvalid(map);
+    po_map_assertvalid(map);
 
-	for (n = 0; n < map->length; n++) {
-		entry = map->entries + n;
+    for (n = 0; n < map->length; n++) {
+        entry = map->entries + n;
 
-		if (!cb(entry->name, entry->fd, entry->rights)) {
-			break;
-		}
-	}
+        if (!cb(entry->name, entry->fd, entry->rights)) {
+            break;
+        }
+    }
 
-	return (n);
+    return (n);
 }
 
 void
 po_map_release(struct po_map *map)
 {
-	if (map == NULL) {
-		return;
-	}
+    if (map == NULL) {
+        return;
+    }
 
-	po_map_assertvalid(map);
+    po_map_assertvalid(map);
 
-	map->refcount -= 1;
+    map->refcount -= 1;
 
-	if (map->refcount == 0) {
-		free(map->entries);
-		free(map);
-	}
+    if (map->refcount == 0) {
+        free(map->entries);
+        free(map);
+    }
 }
 
 /**
@@ -710,14 +702,14 @@ po_map_release(struct po_map *map)
  * @internal
  */
 struct po_packed_entry {
-	/** Integer file descriptor */
-	int fd;
+    /** Integer file descriptor */
+    int fd;
 
-	/** Offset of the entry's name within the po_packed_map's string table */
-	int offset;
+    /** Offset of the entry's name within the po_packed_map's string table */
+    int offset;
 
-	/** Length of the entry's name (not including any null terminator) */
-	int len;
+    /** Length of the entry's name (not including any null terminator) */
+    int len;
 };
 
 /**
@@ -729,129 +721,127 @@ struct po_packed_entry {
  * @internal
  */
 struct po_packed_map {
-	/** The number of po_packed_entry values in the packed map */
-	int count;
+    /** The number of po_packed_entry values in the packed map */
+    int count;
 
-	/**
-	 * Length of the name string table that follows this po_packed_map in the
-	 * shared memory segment.
-	 */
-	int tablelen;
+    /**
+     * Length of the name string table that follows this po_packed_map in the
+     * shared memory segment.
+     */
+    int tablelen;
 
-	/** The actual packed entries */
-	struct po_packed_entry entries[0];
+    /** The actual packed entries */
+    struct po_packed_entry entries[0];
 };
 
 int
 po_pack(struct po_map *map)
 {
-	struct po_packed_entry *entry;
-	struct po_packed_map *packed;
-	char *strtab;
-	size_t chars;   /* total characters to be copied into string table */
-	size_t size;
-	int fd, i, offset;
+    struct po_packed_entry *entry;
+    struct po_packed_map   *packed;
+    char                   *strtab;
+    size_t chars; /* total characters to be copied into string table */
+    size_t size;
+    int    fd, i, offset;
 
-	po_map_assertvalid(map);
+    po_map_assertvalid(map);
 
-	fd = shm_open(SHM_ANON, O_CREAT | O_RDWR, 0600);
-	if (fd == -1){
-		po_errormessage("failed to shm_open SHM for packed map");
-		return (-1);
-	}
+    fd = shm_open(SHM_ANON, O_CREAT | O_RDWR, 0600);
+    if (fd == -1) {
+        po_errormessage("failed to shm_open SHM for packed map");
+        return (-1);
+    }
 
-	chars = 0;
-	for(i = 0; i < map->length; i++) {
-		chars += strlen(map->entries[i].name) + 1;
-	}
+    chars = 0;
+    for (i = 0; i < map->length; i++) {
+        chars += strlen(map->entries[i].name) + 1;
+    }
 
-	size = sizeof(struct po_packed_map)
-		+ map->length * sizeof(struct po_packed_entry)
-		+ chars;
+    size = sizeof(struct po_packed_map) +
+            map->length * sizeof(struct po_packed_entry) + chars;
 
-	if (ftruncate(fd, size) != 0) {
-		po_errormessage("failed to truncate shared memory segment");
-		close(fd);
-		return (-1);
-	}
+    if (ftruncate(fd, size) != 0) {
+        po_errormessage("failed to truncate shared memory segment");
+        close(fd);
+        return (-1);
+    }
 
-	packed = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	if (packed == MAP_FAILED) {
-		po_errormessage("shm_open");
-		close(fd);
-		return (-1);
-	}
+    packed = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (packed == MAP_FAILED) {
+        po_errormessage("shm_open");
+        close(fd);
+        return (-1);
+    }
 
-	packed->count = map->length;
-	packed->tablelen = chars;
-	strtab = ((char*) packed) + size - chars;
-	offset = 0;
+    packed->count = map->length;
+    packed->tablelen = chars;
+    strtab = ((char *)packed) + size - chars;
+    offset = 0;
 
-	for(i=0; i < map->length; i++){
-		entry = packed->entries + i;
+    for (i = 0; i < map->length; i++) {
+        entry = packed->entries + i;
 
-		entry->fd = map->entries[i].fd;
-		entry->offset = offset;
-		entry->len = strlen(map->entries[i].name);
-		strlcpy(strtab + offset, map->entries[i].name,
-			chars - offset);
+        entry->fd = map->entries[i].fd;
+        entry->offset = offset;
+        entry->len = strlen(map->entries[i].name);
+        strlcpy(strtab + offset, map->entries[i].name, chars - offset);
 
-		offset += entry->len;
-	}
+        offset += entry->len;
+    }
 
-	return fd;
+    return fd;
 }
 
-struct po_map*
+struct po_map *
 po_unpack(int fd)
 {
-	struct stat sb;
-	struct po_map_entry *entry;
-	struct po_map *map;
-	struct po_packed_map *packed;
-	char *strtab;
-	int i;
+    struct stat           sb;
+    struct po_map_entry  *entry;
+    struct po_map        *map;
+    struct po_packed_map *packed;
+    char                 *strtab;
+    int                   i;
 
-	if(fstat(fd, &sb) < 0) {
-		po_errormessage("failed to fstat() shared memory segment");
-		return (NULL);
-	}
+    if (fstat(fd, &sb) < 0) {
+        po_errormessage("failed to fstat() shared memory segment");
+        return (NULL);
+    }
 
-	packed = mmap(0, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	if (packed == MAP_FAILED) {
-		po_errormessage("mmap");
-		return (NULL);
-	}
+    packed = mmap(0, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (packed == MAP_FAILED) {
+        po_errormessage("mmap");
+        return (NULL);
+    }
 
-	strtab = ((char*) packed->entries)
-		+ packed->count * sizeof(struct po_packed_entry);
-	assert(strtab - ((char*) packed) <= sb.st_size);
+    strtab = ((char *)packed->entries) +
+            packed->count * sizeof(struct po_packed_entry);
+    assert(strtab - ((char *)packed) <= sb.st_size);
 
-	map = malloc(sizeof(struct po_map));
-	if (map == NULL) {
-		munmap(packed, sb.st_size);
-		return (NULL);
-	}
+    map = malloc(sizeof(struct po_map));
+    if (map == NULL) {
+        munmap(packed, sb.st_size);
+        return (NULL);
+    }
 
-	map->entries = calloc(packed->count, sizeof(struct po_map_entry));
-	if (map->entries == NULL) {
-		munmap(packed, sb.st_size);
-		free(map);
-		return (NULL);
-	}
+    map->entries = calloc(packed->count, sizeof(struct po_map_entry));
+    if (map->entries == NULL) {
+        munmap(packed, sb.st_size);
+        free(map);
+        return (NULL);
+    }
 
-	map->refcount = 1;
-	map->capacity = packed->count;
-	map->length = packed->count;
-	for(i = 0; i < map->length; i++) {
-		entry = map->entries + i;
+    map->refcount = 1;
+    map->capacity = packed->count;
+    map->length = packed->count;
+    for (i = 0; i < map->length; i++) {
+        entry = map->entries + i;
 
-		entry->fd = packed->entries[i].fd;
-		entry->name = strndup(strtab + packed->entries[i].offset,
-			packed->entries[i].len);
-	}
+        entry->fd = packed->entries[i].fd;
+        entry->name = strndup(strtab + packed->entries[i].offset,
+                packed->entries[i].len);
+    }
 
-	po_map_assertvalid(map);
+    po_map_assertvalid(map);
 
-	return map;
+    return map;
 }

@@ -35,10 +35,10 @@
 #define LIBPO_H
 
 #include <sys/cdefs.h>
+
 #include <sys/capsicum.h>
 
 #include <stdbool.h>
-
 
 __BEGIN_DECLS
 
@@ -60,23 +60,23 @@ struct po_map;
  *
  * @returns   whether or not to continue iterating over the @ref po_map
  */
-typedef bool (po_map_iter_cb)(const char *dirname, int dirfd, cap_rights_t);
+typedef bool(po_map_iter_cb)(const char *dirname, int dirfd, cap_rights_t);
 
 /**
  * A simple @ref po_map_iter_cb that will print a @ref po_map's entries,
  * one per line.
  */
-po_map_iter_cb	po_print_entry;
+po_map_iter_cb po_print_entry;
 
 /**
  * A filesystem path, relative to a directory descriptor.
  */
 struct po_relpath {
-	/** The directory the path is relative to */
-	int dirfd;
+    /** The directory the path is relative to */
+    int dirfd;
 
-	/** The path, relative to the directory represented by @ref dirfd */
-	const char *relative_path;
+    /** The path, relative to the directory represented by @ref dirfd */
+    const char *relative_path;
 };
 
 /**
@@ -84,7 +84,7 @@ struct po_relpath {
  *
  * The returned @ref po_map will have a reference count of 1.
  */
-struct po_map* po_map_create(int capacity);
+struct po_map *po_map_create(int capacity);
 
 /**
  * Release a reference to a @ref po_map.
@@ -102,7 +102,7 @@ void po_map_release(struct po_map *);
  *
  * @return   number of elements iterated over
  */
-size_t po_map_foreach(const struct po_map*, po_map_iter_cb);
+size_t po_map_foreach(const struct po_map *, po_map_iter_cb);
 
 /**
  * Add an already-opened directory to a @ref po_map.
@@ -112,7 +112,7 @@ size_t po_map_foreach(const struct po_map*, po_map_iter_cb);
  *                  (which may or may not be the path used to open it)
  * @param   fd      the directory descriptor (must be a directory!)
  */
-struct po_map* po_add(struct po_map *map, const char *path, int fd);
+struct po_map *po_add(struct po_map *map, const char *path, int fd);
 
 /**
  * Pre-open a path and store it in a @ref po_map for later use.
@@ -143,14 +143,14 @@ int po_preopen(struct po_map *map, const char *path, int flags, ...);
  *          path, relative to the file (or undefined if no match found)
  */
 struct po_relpath po_find(struct po_map *map, const char *path,
-	cap_rights_t *rights);
+        cap_rights_t *rights);
 
 /**
  * Retrieve a message from with the last libpreopen error.
  *
  * @returns NULL if there are no errors, null-terminated string otherwise
  */
-const char* po_last_error(void);
+const char *po_last_error(void);
 
 /**
  * Pack a `struct po_map` into a shared memory segment.
@@ -174,9 +174,8 @@ int po_pack(struct po_map *map);
  *
  * @param fd      a file containing a packed `po_map` representation
  */
-struct po_map* po_unpack(int fd);
+struct po_map *po_unpack(int fd);
 
 __END_DECLS
 
 #endif /* !LIBPO_H */
-

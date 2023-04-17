@@ -201,6 +201,16 @@ int po_pack(struct po_map *map);
  */
 struct po_map *po_unpack(int fd);
 
+/**
+ * Set the default map used by the libpreopen libc wrappers.
+ *
+ * If there is an existing default map, it will be freed before it is replaced.
+ * Passing NULL to this function will thus clear the default map.
+ *
+ * @param map     the map to pack into shared memory
+ */
+void po_set_libc_map(struct po_map *map);
+
 __END_DECLS
 
 #endif // LIBPREOPEN_H

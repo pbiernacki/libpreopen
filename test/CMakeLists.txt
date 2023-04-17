@@ -18,7 +18,14 @@ else() # All's well: we have both lit and FileCheck
 		${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.in
 		${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg)
 
-	add_custom_target(check
+	add_custom_target(show-tests
+			COMMAND
+			${LIT_COMMAND} ${CMAKE_CURRENT_BINARY_DIR}
+			--show-suites --show-tests
+
+			USES_TERMINAL
+	)
+	add_custom_target(run-tests
 		COMMAND
 			${LIT_COMMAND} ${CMAKE_CURRENT_BINARY_DIR}
 				--xunit-xml-output=test-results.xml
@@ -27,5 +34,5 @@ else() # All's well: we have both lit and FileCheck
 		BYPRODUCTS test-results.xml
 		COMMENT "Running unit tests"
 	)
-	add_dependencies(check libpreopen)
+	add_dependencies(run-tests libpreopen)
 endif()

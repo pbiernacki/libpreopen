@@ -31,7 +31,7 @@ if (DOXYGEN_FOUND)
 	add_custom_command(
 		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html
 		DEPENDS
-			preopen
+			libpreopen
 			${DOXYFILE}
 			DoxygenLayout.xml
 			${CMAKE_SOURCE_DIR}/README.md

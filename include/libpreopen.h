@@ -68,6 +68,12 @@
 __BEGIN_DECLS
 
 /**
+ * Name of the environment variable containing a file descriptor of shared
+ * memory segment containing passed map.
+ */
+#define SHAREDMEM_FD "PREOPEN_SHAREDMEM_FD"
+
+/**
  * @struct po_map
  * @brief  A mapping from paths to pre-opened directories.
  *

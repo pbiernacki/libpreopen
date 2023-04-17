@@ -513,8 +513,8 @@ get_shared_map(void)
     }
 
     // Attempt to unwrap po_map from a shared memory segment specified by
-    // SHARED_MEMORYFD
-    env = getenv("SHARED_MEMORYFD");
+    // SHAREDMEM_FD
+    env = getenv(SHAREDMEM_FD);
     if (env == NULL || *env == '\0') {
         return (NULL);
     }

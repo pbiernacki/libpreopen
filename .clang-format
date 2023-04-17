@@ -70,6 +70,7 @@ BreakConstructorInitializers: AfterColon
 BreakInheritanceList: AfterComma
 BreakStringLiterals: true
 ColumnLimit: 80
+CommentPragmas: '(COM|CHECK.*|RUN):'
 CompactNamespaces: false
 ConstructorInitializerIndentWidth: 4
 ContinuationIndentWidth: 8

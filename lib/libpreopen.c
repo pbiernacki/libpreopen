@@ -63,6 +63,7 @@
 
 #include <sys/param.h>
 #include <sys/capsicum.h>
+#include <sys/limits.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -98,14 +99,14 @@ struct po_map {
 
 struct po_packed_entry {
     int fd;
-    int offset;
-    int len;
+    size_t offset;
+    size_t len;
 };
 
 struct po_packed_map {
-    int                    count;
-    int                    tablelen;
-    struct po_packed_entry entries[0];
+    size_t                   count;
+    size_t                   tablelen;
+    struct po_packed_entry entries[];
 };
 
 // non-interposed-in-libc version of open(2)
@@ -127,7 +128,7 @@ static struct po_map *global_map;
 
 // API
 struct po_map *
-po_map_create(int capacity)
+po_map_create(size_t capacity)
 {
     struct po_map *map;
 
@@ -313,7 +314,7 @@ po_find(struct po_map *map, const char *path, cap_rights_t *rights)
 }
 
 const char *
-po_last_error()
+po_last_error(void)
 {
     return (error_buffer);
 }
@@ -324,9 +325,9 @@ po_pack(struct po_map *map)
     struct po_packed_entry *entry;
     struct po_packed_map   *packed;
     char                   *strtab;
-    size_t chars; /* total characters to be copied into string table */
-    size_t size;
-    int    fd, i, offset;
+    size_t chars; // total characters to be copied into string table
+    size_t i, offset, size;
+    int    fd;
 
     po_map_assertvalid(map);
 
@@ -343,8 +344,11 @@ po_pack(struct po_map *map)
 
     size = sizeof(struct po_packed_map) +
             map->length * sizeof(struct po_packed_entry) + chars;
+    if (__predict_false(size > OFF_MAX)) {
+        return (-1);
+    }
 
-    if (ftruncate(fd, size) != 0) {
+    if (ftruncate(fd, (off_t)size) != 0) {
         po_errormessage("failed to truncate shared memory segment");
         close(fd);
         return (-1);
@@ -384,14 +388,14 @@ po_unpack(int fd)
     struct po_map        *map;
     struct po_packed_map *packed;
     char                 *strtab;
-    int                   i;
+    size_t                i;
 
     if (fstat(fd, &sb) < 0) {
         po_errormessage("failed to fstat() shared memory segment");
         return (NULL);
     }
 
-    packed = mmap(0, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    packed = mmap(0, (size_t)sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (packed == MAP_FAILED) {
         po_errormessage("mmap");
         return (NULL);
@@ -403,13 +407,13 @@ po_unpack(int fd)
 
     map = malloc(sizeof(struct po_map));
     if (map == NULL) {
-        munmap(packed, sb.st_size);
+        munmap(packed, (size_t)sb.st_size);
         return (NULL);
     }
 
     map->entries = calloc(packed->count, sizeof(struct po_map_entry));
     if (map->entries == NULL) {
-        munmap(packed, sb.st_size);
+        munmap(packed, (size_t)sb.st_size);
         free(map);
         return (NULL);
     }
@@ -496,7 +500,7 @@ find_relative(const char *path, cap_rights_t *rights __unused)
 }
 
 static struct po_map *
-get_shared_map()
+get_shared_map(void)
 {
     struct po_map *map;
     char          *end, *env;
@@ -521,8 +525,13 @@ get_shared_map()
     if (*end != '\0') {
         return (NULL);
     }
+    // In the unlike event that file descriptor we got passed on seems
+    // suspiciously too large...
+    if (__predict_false(fd > INT_MAX)) {
+        return (NULL);
+    }
 
-    map = po_unpack(fd);
+    map = po_unpack((int)fd);
     if (map == NULL) {
         return (NULL);
     }
@@ -599,7 +608,7 @@ connect(int s, const struct sockaddr *name, socklen_t namelen)
     struct po_relpath rel;
 
     if (name->sa_family == AF_UNIX) {
-        struct sockaddr_un *usock = (struct sockaddr_un *)name;
+        struct sockaddr_un *usock = __DECONST(struct sockaddr_un *, name);
         rel = find_relative(usock->sun_path, NULL);
         strlcpy(usock->sun_path, rel.relative_path, sizeof(usock->sun_path));
         return connectat(rel.dirfd, s, name, namelen);

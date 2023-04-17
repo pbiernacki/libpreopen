@@ -109,7 +109,7 @@ struct po_relpath {
  *
  * The returned @ref po_map will have a reference count of 1.
  */
-struct po_map *po_map_create(int capacity);
+struct po_map *po_map_create(size_t capacity);
 
 /**
  * Release a reference to a @ref po_map.

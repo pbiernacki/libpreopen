@@ -439,7 +439,7 @@ po_print_entry(const char *name, int fd, cap_rights_t rights __unused)
 
 // PRIVATE
 
-bool
+static bool
 po_isprefix(const char *dir, size_t dirlen, const char *path)
 {
     size_t i;
@@ -453,7 +453,7 @@ po_isprefix(const char *dir, size_t dirlen, const char *path)
 }
 
 #if !defined(NDEBUG)
-void
+static void
 po_map_assertvalid(const struct po_map *map)
 {
     const struct po_map_entry *entry;
@@ -472,7 +472,7 @@ po_map_assertvalid(const struct po_map *map)
 }
 #endif /* !defined(NDEBUG) */
 
-void
+static void
 po_errormessage(const char *msg)
 {
     snprintf(error_buffer, sizeof(error_buffer), "%s: error %d", msg, errno);

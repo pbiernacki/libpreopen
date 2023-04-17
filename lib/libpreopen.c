@@ -268,6 +268,7 @@ po_preopen(struct po_map *map, const char *path, int flags, ...)
 
     va_start(args, flags);
     mode = va_arg(args, int);
+    va_end(args);
 
     po_map_assertvalid(map);
 
@@ -376,6 +377,7 @@ _open(const char *path, int flags, ...)
 
     va_start(args, flags);
     mode = va_arg(args, int);
+    va_end(args);
     rel = find_relative(path, NULL);
 
     // If the file is already opened, no need of relative opening!
@@ -482,6 +484,7 @@ open(const char *path, int flags, ...)
 
     va_start(args, flags);
     mode = va_arg(args, int);
+    va_end(args);
     return _open(path, flags, mode);
 }
 

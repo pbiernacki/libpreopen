@@ -330,7 +330,7 @@ po_pack(struct po_map *map)
 
     po_map_assertvalid(map);
 
-    fd = shm_open(SHM_ANON, O_CREAT | O_RDWR, 0600);
+    fd = shm_open(SHM_ANON, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     if (fd == -1) {
         po_errormessage("failed to shm_open SHM for packed map");
         return (-1);

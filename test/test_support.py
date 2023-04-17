@@ -1,5 +1,58 @@
+#
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# Copyright (c) 2023 Mysterious Code Ltd.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+# notice, this list of conditions and the following disclaimer in the
+# documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+#
+# Copyright (c) 2016-2018 Jonathan Anderson
+# All rights reserved.
+#
+# This software was developed at Memorial University under the
+# NSERC Discovery program (RGPIN-2015-06048).
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+# notice, this list of conditions and the following disclaimer in the
+# documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+#
+
 import glob
-import platform
 import os
 import subprocess
 import sys
@@ -9,12 +62,8 @@ import sys
 #
 # Excluded from CFLAGS, LDFLAGS, etc.
 #
-if platform.system() == 'FreeBSD':
-	std_incdirs = [ '/usr/include' ]
-	std_libdirs = [ '/lib', '/usr/lib' ]
-else:
-	std_incdirs = [ '/usr/include', '/usr/local/include' ]
-	std_libdirs = [ '/lib', '/usr/lib', '/usr/local/lib' ]
+std_incdirs = ['/usr/include']
+std_libdirs = ['/lib', '/usr/lib']
 
 
 #
@@ -24,28 +73,32 @@ llvm_bindir = os.path.dirname(sys.argv[0])
 default_path = llvm_bindir + os.pathsep + os.environ.get('PATH')
 
 
-def cflags(dirs, defines = [], extra = []):
-	dirs += [ '/usr/local/include' ]
+def cflags(dirs, defines=None, extra=None):
+	if extra is None:
+		extra = []
+	if defines is None:
+		defines = []
+	dirs += ['/usr/local/include']
 	return ' '.join([
-		' '.join([ '-I %s' % d for d in dirs if d not in std_incdirs ]),
-		' '.join([ '-D %s' % d for d in defines ]),
+		' '.join(['-I%s' % d for d in dirs if d not in std_incdirs]),
+		' '.join(['-D%s' % d for d in defines]),
 		' '.join(extra)
 	])
 
-def ldflags(dirs, libs, extras = []):
-	dirs += [ '/usr/local/lib' ]
+
+def ldflags(dirs, libs, extras=None):
+	if extras is None:
+		extras = []
+	dirs += ['/usr/local/lib']
 	return ' '.join([
-		' '.join([ '-L %s' % d for d in dirs if d not in std_libdirs ]),
-		' '.join([ '-l %s' % l for l in libs ])
+		' '.join(['-L%s' % d for d in dirs if d not in std_libdirs]),
+		' '.join(['-l%s' % l for l in libs])
 	] + extras)
+
 
 def cpp_out():
 	""" How do we specify the output file from our platform's cpp? """
-	cpp_version = run_command('cpp', [ '--version' ]).split('\n')[0]
-
-	# Clang usage: 'cpp in -o out'; GCC usage: 'cpp in out'
-	if 'clang version 3.3' in cpp_version: return '-o'
-	else: return ''
+	return ''
 
 
 def find_containing_dir(filename, paths, notfound_msg):
@@ -61,50 +114,48 @@ def find_containing_dir(filename, paths, notfound_msg):
 	sys.exit(1)
 
 
-def find_include_dir(filename, paths = [], notfound_msg = ""):
+def find_include_dir(filename, paths=None, notfound_msg=""):
+	if paths is None:
+		paths = []
 	return find_containing_dir(filename, std_incdirs + paths, notfound_msg)
 
-def find_libdir(filename, paths = [], notfound_msg = ""):
+
+def find_libdir(filename, paths=None, notfound_msg=""):
+	if paths is None:
+		paths = []
 	return find_containing_dir(filename, std_libdirs + paths, notfound_msg)
 
-def find_library(filename, paths = [], notfound_msg = ""):
+
+def find_library(filename, paths=None, notfound_msg=""):
+	if paths is None:
+		paths = []
 	d = find_containing_dir(filename, std_libdirs + paths, notfound_msg)
 	return os.path.join(d, filename)
 
-def libname(name, loadable_module = False):
+
+def libname(name, loadable_module=False):
 	""" Translate a library name to a filename (e.g., foo -> libfoo.so). """
-	system = platform.system()
-
-	# Loadable modules don't get a 'lib' prefix on any platform.
-	if system != 'Windows':
-		name = name if loadable_module else 'lib' + name
-
-	# Platform-specific suffixes:
-	if system == 'Darwin':
-		name += '.dylib'
-
-	elif system == 'Windows':
-		name += '.dll'
-
-	else:
-		name += '.so'
-
 	return name
 
-def run_command(command, args = []):
+
+def run_command(command, args=None):
 	""" Run a command line and return the output from stdout. """
 
-	argv = [ command ] + args
-	try: cmd = subprocess.Popen(argv, stdout = subprocess.PIPE)
-	except OSError, why:
-		sys.stderr.write('Unable to run %s: %s\n' % (command, why))
+	if args is None:
+		args = []
+	argv = [command] + args
+	try:
+		cmd = subprocess.Popen(argv, stdout=subprocess.PIPE)
+	except OSError as e:
+		sys.stderr.write('Unable to run %s: %s\n' % (command, e))
 		sys.stderr.flush()
 		sys.exit(1)
 
 	cmd.wait()
 	return cmd.stdout.read()
 
-def which(commands, paths = default_path):
+
+def which(commands, paths=default_path):
 	"""
 	Do something similar to which(2): find the full path of a command
 	(one of 'commands') contained in the $PATH environment variable.
@@ -119,10 +170,9 @@ def which(commands, paths = default_path):
 	raise ValueError('Unable to find %s in path %s' % (commands, paths))
 
 
-
 class Config:
 	def __init__(self, command):
 		self.command = command
 
 	def __getitem__(self, name):
-		return run_command(self.command, [ '--' + name ]).strip()
+		return run_command(self.command, ['--' + name]).strip()

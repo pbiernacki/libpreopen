@@ -431,7 +431,7 @@ po_unpack(int fd)
 }
 
 bool
-po_print_entry(const char *name, int fd, cap_rights_t rights)
+po_print_entry(const char *name, int fd, cap_rights_t rights __unused)
 {
     printf(" - name: '%s', fd: %d, rights: <rights>\n", name, fd);
     return (true);
@@ -479,7 +479,7 @@ po_errormessage(const char *msg)
 }
 
 static struct po_relpath
-find_relative(const char *path, cap_rights_t *rights)
+find_relative(const char *path, cap_rights_t *rights __unused)
 {
     struct po_relpath rel;
     struct po_map    *map;

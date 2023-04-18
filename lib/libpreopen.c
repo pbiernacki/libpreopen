@@ -124,21 +124,13 @@ static char           error_buffer[1024];
 static struct po_map *global_map;
 
 // Native, not wrapped, functions
-
-typedef int (*po_connectat_t)(int, int, const struct sockaddr *, socklen_t);
-typedef int (*po_faccessat_t)(int, const char *, int, int);
-typedef int (*po_fstatat_t)(int, const char *, struct stat *, int);
-typedef int (*po_funlinkat_t)(int, const char *, int, int);
-typedef int (*po_openat_t)(int, const char *, int, int);
-typedef int (*po_renameat_t)(int, const char *, int, const char *);
-
 static struct {
-    po_connectat_t po_connectat;
-    po_faccessat_t po_faccessat;
-    po_fstatat_t   po_fstatat;
-    po_funlinkat_t po_funlinkat;
-    po_openat_t    po_openat;
-    po_renameat_t  po_renameat;
+    int (*po_connectat)(int, int, const struct sockaddr *, socklen_t);
+    int (*po_faccessat)(int, const char *, int, int);
+    int (*po_fstatat)(int, const char *, struct stat *, int);
+    int (*po_funlinkat)(int, const char *, int, int);
+    int (*po_openat)(int, const char *, int, int);
+    int (*po_renameat)(int, const char *, int, const char *);
 } po_nf;
 
 // API

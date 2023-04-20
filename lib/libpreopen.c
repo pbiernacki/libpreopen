@@ -706,11 +706,15 @@ renameat(int fromfd, const char *from, int tofd, const char *to)
 {
     struct po_relpath rel_from, rel_to;
 
-    if (fromfd == AT_FDCWD || tofd == AT_FDCWD) {
+    if (fromfd == AT_FDCWD) {
         rel_from = find_relative(from, NULL);
+        fromfd = rel_from.dirfd;
+        from = rel_from.relative_path;
+    }
+    if (tofd == AT_FDCWD) {
         rel_to = find_relative(to, NULL);
-        return (po_nf.po_renameat(rel_from.dirfd, rel_from.relative_path,
-                rel_to.dirfd, rel_to.relative_path));
+        tofd = rel_to.dirfd;
+        to = rel_to.relative_path;
     }
     return (po_nf.po_renameat(fromfd, from, tofd, to));
 }

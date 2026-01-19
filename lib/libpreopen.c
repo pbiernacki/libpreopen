@@ -561,9 +561,12 @@ openat(int fd, const char *path, int flags, ...)
     va_list           args;
     int               mode;
 
-    va_start(args, flags);
-    mode = va_arg(args, int);
-    va_end(args);
+    mode = 0;
+    if ((flags & O_CREAT) != 0) {
+        va_start(args, flags);
+        mode = va_arg(args, int);
+        va_end(args);
+    }
 
     if (fd == AT_FDCWD) {
         rel = find_relative(path, NULL);

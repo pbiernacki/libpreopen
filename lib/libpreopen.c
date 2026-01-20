@@ -77,6 +77,7 @@
 #include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -236,6 +237,11 @@ struct po_map *
 po_map_enlarge(struct po_map *map)
 {
     struct po_map_entry *enlarged;
+
+    if (map->capacity > (SIZE_MAX / 2 / sizeof(struct po_map_entry))) {
+        errno = ENOMEM;
+        return (NULL);
+    }
     enlarged = calloc(sizeof(struct po_map_entry), 2 * map->capacity);
     if (enlarged == NULL) {
         return (NULL);
@@ -244,6 +250,7 @@ po_map_enlarge(struct po_map *map)
     free(map->entries);
     map->entries = enlarged;
     map->capacity = 2 * map->capacity;
+
     return map;
 }
 

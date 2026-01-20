@@ -459,13 +459,15 @@ static bool
 po_isprefix(const char *dir, size_t dirlen, const char *path)
 {
     size_t i;
+
     assert(dir != NULL);
     assert(path != NULL);
-    for (i = 0; i < dirlen; i++) {
-        if (path[i] != dir[i])
-            return false;
+
+    if (strncmp(dir, path, dirlen) != 0) {
+        return false;
     }
-    return path[i] == '/' || path[i] == '\0';
+
+    return path[dirlen] == '/' || path[dirlen] == '\0';
 }
 
 #if !defined(NDEBUG)

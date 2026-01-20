@@ -52,7 +52,7 @@
 
 #ifdef PARENT
 
-char **environ;
+extern char **environ;
 
 int main(int argc, char *argv[]){
 	char buffer[20];

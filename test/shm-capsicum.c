@@ -54,12 +54,12 @@
 
 #ifdef PARENT
 
-char **environ;
+extern char **environ;
 
 int main(int argc, char *argv[]){
 	char buffer[20];
 	struct po_map *map;
-	int len, shmfd;
+	int shmfd;
 	int foo, wibble;
 
 	// CHECK: {{.*}}.parent
@@ -122,11 +122,9 @@ int main(int argc, char *argv[]){
 
 int main(int argc, char *argv[])
 {
-	char buffer[1024];
-	struct stat st;
 	struct po_map *map;
 	char *end, *env;
-	int fd, i, shmfd;
+	int shmfd;
 
 	// CHECK: {{.*}}.child
 	printf("----------------------------------------"
@@ -140,7 +138,7 @@ int main(int argc, char *argv[])
 	// SHARED_MEMORYFD
 	env = getenv("LIB_PO_MAP");
 	if (env == NULL || *env == '\0') {
-		return (NULL);
+		return (1);
 	}
 
 	// We expect this environment variable to be an integer and nothing but

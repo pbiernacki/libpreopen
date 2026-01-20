@@ -34,12 +34,14 @@
  * RUN: %filecheck %s -input-file %t.out
  */
 
+#include <assert.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
-#include "internal.h"
+#include "libpreopen.h"
 
 
 void check_prefix(const char *dir, const char *path);
@@ -69,6 +71,18 @@ int main(int argc, char *argv[])
 	check_prefix("/foo", "/foobar");
 
 	return 0;
+}
+
+bool po_isprefix(const char *dir, size_t dirlen, const char *path)
+{
+    size_t i;
+    assert(dir != NULL);
+    assert(path != NULL);
+    for (i = 0; i < dirlen; i++) {
+        if (path[i] != dir[i])
+            return false;
+    }
+    return path[i] == '/' || path[i] == '\0';
 }
 
 

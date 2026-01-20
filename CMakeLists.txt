@@ -7,6 +7,8 @@ include(GNUInstallDirs)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules")
 
+option(ENABLE_PO_DEBUG "Enable debug logging (PO_DEBUG)" OFF)
+
 include_directories(include)
 
 add_subdirectory(doc)

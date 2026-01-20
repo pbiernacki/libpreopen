@@ -85,6 +85,17 @@
 
 #include "libpreopen.h"
 
+/**
+ * WARNING: enabling PO_DEBUG makes the library unsafe for use in signal
+ * handlers due to the use of fprintf.
+ */
+#ifdef PO_DEBUG
+    #define PO_LOG(fmt, ...) \
+        fprintf(stderr, "[libpreopen] " fmt "\n", ##__VA_ARGS__)
+#else
+    #define PO_LOG(fmt, ...) do {} while (0)
+#endif
+
 struct po_map_entry {
     const char  *name;
     int          fd;
@@ -111,7 +122,6 @@ struct po_packed_map {
 };
 
 static bool po_isprefix(const char *dir, size_t dirlen, const char *path);
-static void po_errormessage(const char *msg);
 #ifdef NDEBUG
 #define po_map_assertvalid(...)
 #else
@@ -121,7 +131,6 @@ static struct po_map    *po_map_enlarge(struct po_map *map);
 static struct po_relpath find_relative(const char *path, cap_rights_t *rights);
 static struct po_map    *get_shared_map(void);
 
-static char           error_buffer[1024];
 static struct po_map *global_map;
 
 // Native, not wrapped, functions
@@ -142,11 +151,13 @@ po_map_create(size_t capacity)
 
     map = malloc(sizeof(struct po_map));
     if (map == NULL) {
+        PO_LOG("po_map_create(): malloc failed");
         return (NULL);
     }
 
     map->entries = calloc(sizeof(struct po_map_entry), capacity);
     if (map->entries == NULL) {
+        PO_LOG("po_map_create(): malloc failed");
         free(map);
         return (NULL);
     }
@@ -208,12 +219,15 @@ po_add(struct po_map *map, const char *path, int fd)
     po_map_assertvalid(map);
 
     if (path == NULL || fd < 0) {
+        errno = EINVAL;
+        PO_LOG("po_add(): invalid arguments (path=%p, fd=%d)", path, fd);
         return (NULL);
     }
 
     if (map->length == map->capacity) {
         map = po_map_enlarge(map);
         if (map == NULL) {
+            PO_LOG("po_add(): failed to enlarge map");
             return (NULL);
         }
     }
@@ -225,6 +239,7 @@ po_add(struct po_map *map, const char *path, int fd)
     entry->fd = fd;
 
     if (cap_rights_get(fd, &entry->rights) != 0) {
+        PO_LOG("po_add(): cap_rights_get failed for fd=%d", fd);
         return (NULL);
     }
 
@@ -240,10 +255,12 @@ po_map_enlarge(struct po_map *map)
 
     if (map->capacity > (SIZE_MAX / 2 / sizeof(struct po_map_entry))) {
         errno = ENOMEM;
+        PO_LOG("po_map_enlarge(): capacity overflow check failed");
         return (NULL);
     }
     enlarged = calloc(sizeof(struct po_map_entry), 2 * map->capacity);
     if (enlarged == NULL) {
+        PO_LOG("po_map_enlarge(): calloc failed");
         return (NULL);
     }
     memcpy(enlarged, map->entries, map->length * sizeof(*enlarged));
@@ -267,15 +284,18 @@ po_preopen(struct po_map *map, const char *path, int flags, ...)
     po_map_assertvalid(map);
 
     if (path == NULL) {
+        errno = EFAULT;
         return (-1);
     }
 
     fd = po_nf.po_openat(AT_FDCWD, path, flags, mode);
     if (fd == -1) {
+        PO_LOG("po_preopen(): openat failed for path '%s'", path);
         return (-1);
     }
 
     if (po_add(map, path, fd) == NULL) {
+        PO_LOG("po_preopen(): po_add failed for path '%s'", path);
         return (-1);
     }
 
@@ -308,6 +328,7 @@ po_find(struct po_map *map, const char *path, cap_rights_t *rights)
         }
 
         if (rights && !cap_rights_contains(&entry->rights, rights)) {
+            PO_LOG("po_find(): skipped '%s', insufficient rights", name);
             continue;
         }
 
@@ -328,13 +349,11 @@ po_find(struct po_map *map, const char *path, cap_rights_t *rights)
     match.relative_path = relpath;
     match.dirfd = best;
 
-    return match;
-}
+    if (best == -1) {
+        PO_LOG("po_find(): no match found for '%s'", path);
+    }
 
-const char *
-po_last_error(void)
-{
-    return (error_buffer);
+    return match;
 }
 
 int
@@ -351,7 +370,7 @@ po_pack(struct po_map *map)
 
     fd = shm_open(SHM_ANON, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     if (fd == -1) {
-        po_errormessage("failed to shm_open SHM for packed map");
+        PO_LOG("po_pack(): shm_open failed");
         return (-1);
     }
 
@@ -363,18 +382,20 @@ po_pack(struct po_map *map)
     size = sizeof(struct po_packed_map) +
             map->length * sizeof(struct po_packed_entry) + chars;
     if (__predict_false(size > OFF_MAX)) {
+        errno = EOVERFLOW;
+        PO_LOG("po_pack(): size overflow");
         return (-1);
     }
 
     if (ftruncate(fd, (off_t)size) != 0) {
-        po_errormessage("failed to truncate shared memory segment");
+        PO_LOG("po_pack(): ftruncate failed");
         close(fd);
         return (-1);
     }
 
     packed = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (packed == MAP_FAILED) {
-        po_errormessage("shm_open");
+        PO_LOG("po_pack(): mmap failed");
         close(fd);
         return (-1);
     }
@@ -409,20 +430,26 @@ po_unpack(int fd)
     size_t                i;
 
     if (fstat(fd, &sb) < 0) {
-        po_errormessage("failed to fstat() shared memory segment");
+        PO_LOG("po_unpack(): fstat failed");
         return (NULL);
     }
 
     packed = mmap(0, (size_t)sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
             0);
     if (packed == MAP_FAILED) {
-        po_errormessage("mmap");
+        PO_LOG("po_unpack(): mmap failed");
         return (NULL);
     }
 
     strtab = ((char *)packed->entries) +
             packed->count * sizeof(struct po_packed_entry);
-    assert(strtab - ((char *)packed) <= sb.st_size);
+    // verify strtab is within bounds
+    if ((uintptr_t)strtab - (uintptr_t)packed > (size_t)sb.st_size) {
+        errno = EINVAL;
+        PO_LOG("po_unpack(): security check failed (strtab out of bounds)");
+        munmap(packed, (size_t)sb.st_size);
+        return (NULL);
+    }
 
     map = malloc(sizeof(struct po_map));
     if (map == NULL) {
@@ -497,12 +524,6 @@ po_map_assertvalid(const struct po_map *map)
 }
 #endif /* !defined(NDEBUG) */
 
-static void
-po_errormessage(const char *msg)
-{
-    snprintf(error_buffer, sizeof(error_buffer), "%s: error %d", msg, errno);
-}
-
 static struct po_relpath
 find_relative(const char *path, cap_rights_t *rights __unused)
 {
@@ -537,6 +558,7 @@ get_shared_map(void)
     // SHAREDMEM_FD
     env = getenv(SHAREDMEM_FD);
     if (env == NULL || *env == '\0') {
+        PO_LOG("get_shared_map(): SHAREDMEM_FD not set");
         return (NULL);
     }
 
@@ -544,16 +566,21 @@ get_shared_map(void)
     // an integer.
     fd = strtol(env, &end, 10);
     if (*end != '\0') {
+        errno = EINVAL;
+        PO_LOG("get_shared_map(): invalid SHAREDMEM_FD value");
         return (NULL);
     }
     // In the unlike event that file descriptor we got passed on seems
     // suspiciously too large...
     if (__predict_false(fd > INT_MAX)) {
+        errno = EBADF;
+        PO_LOG("get_shared_map(): fd too large");
         return (NULL);
     }
 
     map = po_unpack((int)fd);
     if (map == NULL) {
+        PO_LOG("get_shared_map(): unpack failed");
         return (NULL);
     }
 

@@ -691,10 +691,26 @@ connectat(int fd, int s, const struct sockaddr *name, socklen_t namelen)
     struct po_relpath rel;
 
     if (name->sa_family == AF_UNIX && fd == AT_FDCWD) {
-        struct sockaddr_un *usock = __DECONST(struct sockaddr_un *, name);
-        rel = find_relative(usock->sun_path, NULL);
-        strlcpy(usock->sun_path, rel.relative_path, sizeof(usock->sun_path));
-        return (po_nf.po_connectat(rel.dirfd, s, name, namelen));
+        // Create a local copy of the address structure.  The original 'name'
+        // argument is const and might point to read-only memory.
+        struct sockaddr_un sun_copy;
+        const struct sockaddr_un *sun_orig = (const struct sockaddr_un *)name;
+
+        rel = find_relative(sun_orig->sun_path, NULL);
+
+        memset(&sun_copy, 0, sizeof(sun_copy));
+        sun_copy.sun_family = AF_UNIX;
+
+        if (strlcpy(sun_copy.sun_path, rel.relative_path, sizeof(sun_copy.sun_path)) >=
+                sizeof(sun_copy.sun_path)) {
+            errno = ENAMETOOLONG;
+            return (-1);
+        }
+
+        sun_copy.sun_len = SUN_LEN(&sun_copy);
+
+        return (po_nf.po_connectat(rel.dirfd, s, (struct sockaddr *)&sun_copy,
+                sizeof(sun_copy)));
     }
     return (po_nf.po_connectat(fd, s, name, namelen));
 }

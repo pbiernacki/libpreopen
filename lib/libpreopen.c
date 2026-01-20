@@ -162,6 +162,7 @@ po_map_create(size_t capacity)
 void
 po_map_release(struct po_map *map)
 {
+    size_t n;
     if (map == NULL) {
         return;
     }
@@ -171,6 +172,9 @@ po_map_release(struct po_map *map)
     map->refcount -= 1;
 
     if (map->refcount == 0) {
+        for (n = 0; n < map->length; n++) {
+            free((char *)map->entries[n].name);
+        }
         free(map->entries);
         free(map);
     }
